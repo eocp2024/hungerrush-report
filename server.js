@@ -126,6 +126,10 @@ app.get("/summary", async (req, res) => {
     const result = await fetchReport(start_datetime, end_datetime);
     res.json(result);
 });
+// Default route to confirm API is running
+app.get("/", (req, res) => {
+    res.send("✅ HungerRush Report API is running! Use /summary to fetch data.");
+});
 
 // ** Start Server on PORT 8080 for Railway **
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
