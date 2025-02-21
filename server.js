@@ -51,6 +51,9 @@ async function fetchReport(startDatetime, endDatetime) {
             console.log("🖱️ Scrolling to Order Details...");
             await page.evaluate((el) => el.scrollIntoView({ behavior: "smooth", block: "center" }), orderDetailsButton[0]);
 
+            console.log("⏳ Waiting for button to be fully clickable...");
+            await page.waitForFunction((el) => el && el.offsetParent !== null, {}, orderDetailsButton[0]);
+
             console.log("✅ Clicking Order Details!");
             await orderDetailsButton[0].click();
             await page.waitForTimeout(2000); // Short delay after clicking
@@ -170,11 +173,6 @@ app.get("/summary", async (req, res) => {
 
     const result = await fetchReport(start_datetime, end_datetime);
     res.json(result);
-});
-
-// ** Default Route **
-app.get("/", (req, res) => {
-    res.send("✅ HungerRush Report API is running! Use /summary to fetch data.");
 });
 
 // ** Start Server **
