@@ -1,6 +1,6 @@
 require("dotenv").config();
 const express = require("express");
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-core");
 const fs = require("fs");
 const path = require("path");
 const xlsx = require("xlsx");
@@ -19,6 +19,7 @@ async function fetchReport(startDatetime, endDatetime) {
     const browser = await puppeteer.launch({
         headless: "new", // Fully headless mode
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, // Use the Chromium executable provided by Railway
     });
 
     const page = await browser.newPage();
@@ -40,7 +41,7 @@ async function fetchReport(startDatetime, endDatetime) {
 
         // ** Debug Screenshot Before Clicking Order Details **
         console.log("📸 Taking a screenshot before clicking Order Details...");
-        await page.screenshot({ path: "/app/debug-before-click.png", fullPage: true });
+        await page.screenshot({ path: "debug-before-click.png", fullPage: true });
 
         // ** Ensure 'Order Details' is Clickable **
         const orderDetailsXPath = "//span[text()='Order Details']";
@@ -109,7 +110,10 @@ async function fetchReport(startDatetime, endDatetime) {
         await delay(10000);
 
         // ** Locate Latest Excel File **
-        const downloadDir = "/app/downloads"; // Ensure Railway's storage path
+        const downloadDir = path.join(__dirname, "downloads"); // Use a relative path
+        if (!fs.existsSync(downloadDir)) {
+            fs.mkdirSync(downloadDir);
+        }
         const files = fs.readdirSync(downloadDir);
         const excelFile = files
             .filter((file) => file.includes("order-details") && file.endsWith(".xlsx"))
