@@ -16,7 +16,7 @@ async function fetchReport(startDatetime, endDatetime) {
     console.log(`📅 Fetching report from ${startDatetime} to ${endDatetime}`);
 
     const browser = await puppeteer.launch({
-        headless: true, // Changed to true for better performance in headless mode
+        headless: true,
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium-browser",
         args: [
             "--no-sandbox",
