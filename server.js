@@ -14,7 +14,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ** MAIN FUNCTION: Run Puppeteer to Get Report **
 async function fetchReport(startDatetime, endDatetime) {
-    console.log(`\n🕒 Received request for summary from ${startDatetime} to ${endDatetime}`);
+    console.log(`📅 Received request for summary from ${startDatetime} to ${endDatetime}`);
 
     const browser = await puppeteer.launch({
         headless: "new", // Fully headless mode
@@ -24,121 +24,145 @@ async function fetchReport(startDatetime, endDatetime) {
     const page = await browser.newPage();
     await page.goto("https://hub.hungerrush.com/", { waitUntil: "networkidle2" });
 
-    // ** Login **
-    console.log("🔑 Logging into HungerRush...");
-    if (!process.env.HUNGER_RUSH_EMAIL || !process.env.HUNGER_RUSH_PASSWORD) {
-        console.log("❌ ERROR: Missing environment variables (HUNGER_RUSH_EMAIL or HUNGER_RUSH_PASSWORD)");
-        return { error: "Missing environment variables" };
-    }
+    try {
+        console.log("🔑 Logging into HungerRush...");
 
-    await page.type("#UserName", process.env.HUNGER_RUSH_EMAIL);
-    await page.type("#Password", process.env.HUNGER_RUSH_PASSWORD);
-    await page.click("#newLogonButton");
+        // ** Login Process **
+        await page.type("#UserName", process.env.HUNGER_RUSH_EMAIL);
+        await page.type("#Password", process.env.HUNGER_RUSH_PASSWORD);
+        await page.click("#newLogonButton");
 
-    // ** Wait for page load **
-    await page.waitForSelector("#rptvNextAnchor", { timeout: 30000 });
+        await page.waitForSelector("#rptvNextAnchor", { timeout: 30000 });
+        console.log("✅ Login successful! Navigating to Order Details...");
 
-    console.log("✅ Login successful! Navigating to Order Details...");
+        // ** Navigate to Order Details **
+        await page.click("#rptvNextAnchor"); // Click on "Reporting - NEW!"
 
-    // ** Navigate to Reporting - NEW! **
-    await page.evaluate(() => document.querySelector("#rptvNextAnchor").click());
+        await page.waitForXPath("//span[text()='Order Details']", { timeout: 30000 });
+        const orderDetailsButton = await page.$x("//span[text()='Order Details']");
+        if (orderDetailsButton.length > 0) {
+            await orderDetailsButton[0].click();
+        } else {
+            throw new Error("❌ 'Order Details' button not found!");
+        }
 
-    // ** Debug: Screenshot Before "Order Details" **
-    console.log("📸 Taking a screenshot before looking for Order Details...");
-    await page.screenshot({ path: "/app/debug-login.png", fullPage: true });
+        console.log("✅ Selected Order Details!");
 
-    // ** Wait for Order Details with better timeout & XPath **
-    await page.waitForXPath("//span[contains(text(), 'Order Details')]", { timeout: 60000 });
-    await page.waitForTimeout(2000); // Short delay before clicking
-    const orderDetailsButton = await page.$x("//span[contains(text(), 'Order Details')]");
-    await orderDetailsButton[0].click();
-    console.log("✅ Clicked Order Details!");
+        // ** Select Piqua Store **
+        await page.waitForSelector(".p-multiselect-trigger-icon");
+        await page.click(".p-multiselect-trigger-icon");
 
-    // ** Select Piqua Store **
-    await page.waitForSelector(".p-multiselect-trigger-icon");
-    await page.evaluate(() => document.querySelector(".p-multiselect-trigger-icon").click());
-    await page.waitForXPath("//span[text()='Piqua']");
-    const storeOption = await page.$x("//span[text()='Piqua']");
-    await storeOption[0].click();
-    console.log("✅ Selected Piqua store!");
+        await page.waitForXPath("//span[text()='Piqua']", { timeout: 30000 });
+        const piquaStoreButton = await page.$x("//span[text()='Piqua']");
+        if (piquaStoreButton.length > 0) {
+            await piquaStoreButton[0].click();
+        } else {
+            throw new Error("❌ 'Piqua' store option not found!");
+        }
 
-    // ** Run Report **
-    await page.waitForSelector("#runReport");
-    await page.evaluate(() => document.querySelector("#runReport").click());
-    console.log("📊 Running report...");
+        console.log("✅ Selected Piqua Store!");
 
-    // ** Export to Excel **
-    await page.waitForXPath("//span[contains(text(), ' Export ')]", { timeout: 60000 });
-    const exportDropdown = await page.$x("//span[contains(text(), ' Export ')]");
-    await exportDropdown[0].click();
+        // ** Click 'Run Report' **
+        await page.waitForSelector("#runReport");
+        await page.click("#runReport");
 
-    await page.waitForXPath("//div[contains(text(), 'Export all data to Excel')]");
-    const exportExcel = await page.$x("//div[contains(text(), 'Export all data to Excel')]");
-    await exportExcel[0].click();
-    console.log("📂 Report download initiated!");
+        console.log("📊 Running Report...");
 
-    // ** Wait for file to download (simulate 10s delay) **
-    await delay(10000);
+        // ** Click 'Export' Dropdown **
+        await page.waitForXPath("//div[@class='dx-button-content']//span[text()=' Export ']", { timeout: 30000 });
+        const exportDropdown = await page.$x("//div[@class='dx-button-content']//span[text()=' Export ']");
+        if (exportDropdown.length > 0) {
+            await exportDropdown[0].click();
+        } else {
+            throw new Error("❌ 'Export' dropdown not found!");
+        }
 
-    // ** Find Latest Excel File **
-    const downloadDir = "/app/downloads"; // Set Railway's persistent storage directory
-    const files = fs.readdirSync(downloadDir);
-    const excelFile = files.filter((file) => file.includes("order-details") && file.endsWith(".xlsx")).sort()[0];
+        console.log("✅ Opened Export dropdown!");
 
-    if (!excelFile) {
-        console.log("❌ ERROR: Excel file not found.");
+        // ** Select 'Export all data to Excel' **
+        await page.waitForXPath("//div[contains(text(), 'Export all data to Excel')]", { timeout: 30000 });
+        const exportExcelOption = await page.$x("//div[contains(text(), 'Export all data to Excel')]");
+        if (exportExcelOption.length > 0) {
+            await exportExcelOption[0].click();
+        } else {
+            throw new Error("❌ 'Export to Excel' option not found!");
+        }
+
+        console.log("📂 Report download initiated!");
+
+        // ** Wait for file to download (simulate delay) **
+        await delay(10000);
+
+        // ** Locate Latest Excel File **
+        const downloadDir = "/app/downloads"; // Ensure Railway's storage path
+        const files = fs.readdirSync(downloadDir);
+        const excelFile = files
+            .filter((file) => file.includes("order-details") && file.endsWith(".xlsx"))
+            .sort()
+            .pop();
+
+        if (!excelFile) {
+            throw new Error("❌ Excel file not found!");
+        }
+
+        const excelPath = path.join(downloadDir, excelFile);
+        console.log(`✅ Excel file found: ${excelPath}`);
+
+        // ** Parse Excel File **
+        const workbook = xlsx.readFile(excelPath);
+        const sheetName = workbook.SheetNames[0];
+        const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        // ** Filter by Datetime **
+        const filteredData = data.filter((row) => {
+            const orderDatetime = moment(`${row.Date} ${row.Time}`, "MMM DD YYYY hh:mm A");
+            return orderDatetime.isBetween(moment(startDatetime), moment(endDatetime), undefined, "[]");
+        });
+
+        // ** Compute Sales & Tips **
+        const inStoreOrders = ["Pick Up", "Pickup", "To Go", "Web Pickup", "Web Pick Up"];
+        const cashSalesInStore = filteredData
+            .filter((order) => inStoreOrders.includes(order.Type) && order.Payment.includes("Cash"))
+            .reduce((sum, order) => sum + order.Total, 0);
+        const cashSalesDelivery = filteredData
+            .filter((order) => order.Type.includes("Delivery") && order.Payment.includes("Cash"))
+            .reduce((sum, order) => sum + order.Total, 0);
+        const creditCardTipsInStore = filteredData
+            .filter((order) => inStoreOrders.includes(order.Type) && /Visa|MC|AMEX/.test(order.Payment))
+            .reduce((sum, order) => sum + (order.Tips || 0), 0);
+        const creditCardTipsDelivery = filteredData
+            .filter((order) => order.Type.includes("Delivery") && /Visa|MC|AMEX/.test(order.Payment))
+            .reduce((sum, order) => sum + (order.Tips || 0), 0);
+
         await browser.close();
-        return { error: "Excel file not found." };
+
+        return {
+            "Cash Sales (In-Store)": cashSalesInStore.toFixed(2),
+            "Cash Sales (Delivery)": cashSalesDelivery.toFixed(2),
+            "Credit Card Tips (In-Store)": creditCardTipsInStore.toFixed(2),
+            "Credit Card Tips (Delivery)": creditCardTipsDelivery.toFixed(2),
+        };
+    } catch (error) {
+        console.error(`❌ ERROR during Puppeteer execution: ${error}`);
+        await browser.close();
+        return { error: error.message };
     }
-
-    const excelPath = path.join(downloadDir, excelFile);
-    console.log(`✅ Excel file found: ${excelPath}`);
-
-    // ** Parse Excel File **
-    const workbook = xlsx.readFile(excelPath);
-    const sheetName = workbook.SheetNames[0];
-    const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
-    // ** Filter by Datetime **
-    const filteredData = data.filter((row) => {
-        const orderDatetime = moment(`${row.Date} ${row.Time}`, "MMM DD YYYY hh:mm A");
-        return orderDatetime.isBetween(moment(startDatetime), moment(endDatetime), undefined, "[]");
-    });
-
-    // ** Compute Sales & Tips **
-    const inStoreOrders = ["Pick Up", "Pickup", "To Go", "Web Pickup", "Web Pick Up"];
-    const cashSalesInStore = filteredData.filter((order) => inStoreOrders.includes(order.Type) && order.Payment.includes("Cash")).reduce((sum, order) => sum + order.Total, 0);
-    const cashSalesDelivery = filteredData.filter((order) => order.Type.includes("Delivery") && order.Payment.includes("Cash")).reduce((sum, order) => sum + order.Total, 0);
-    const creditCardTipsInStore = filteredData.filter((order) => inStoreOrders.includes(order.Type) && /Visa|MC|AMEX/.test(order.Payment)).reduce((sum, order) => sum + (order.Tips || 0), 0);
-    const creditCardTipsDelivery = filteredData.filter((order) => order.Type.includes("Delivery") && /Visa|MC|AMEX/.test(order.Payment)).reduce((sum, order) => sum + (order.Tips || 0), 0);
-
-    await browser.close();
-    console.log("✅ Report generation successful!");
-
-    return {
-        "Cash Sales (In-Store)": cashSalesInStore.toFixed(2),
-        "Cash Sales (Delivery)": cashSalesDelivery.toFixed(2),
-        "Credit Card Tips (In-Store)": creditCardTipsInStore.toFixed(2),
-        "Credit Card Tips (Delivery)": creditCardTipsDelivery.toFixed(2),
-    };
 }
 
 // ** API Route **
-app.get("/", (req, res) => {
-    res.send("<h2>✅ HungerRush Report API is running! Use <code>/summary</code> to fetch data.</h2>");
-});
-
 app.get("/summary", async (req, res) => {
     const { start_datetime, end_datetime } = req.query;
-    if (!start_datetime || !end_datetime) return res.status(400).json({ error: "Missing parameters" });
-
-    try {
-        const result = await fetchReport(start_datetime, end_datetime);
-        res.json(result);
-    } catch (error) {
-        console.error("❌ ERROR fetching report:", error);
-        res.status(500).json({ error: "Failed to generate report." });
+    if (!start_datetime || !end_datetime) {
+        return res.status(400).json({ error: "❌ Missing parameters" });
     }
+
+    const result = await fetchReport(start_datetime, end_datetime);
+    res.json(result);
+});
+
+// ** Default Route **
+app.get("/", (req, res) => {
+    res.send("✅ HungerRush Report API is running! Use /summary to fetch data.");
 });
 
 // ** Start Server **
