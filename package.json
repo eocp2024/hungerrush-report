@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "postinstall": "apt-get update && apt-get install -y chromium"
+    "postinstall": "apt-get update && apt-get install -y chromium-browser"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
