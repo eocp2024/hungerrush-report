@@ -17,6 +17,7 @@ async function fetchReport(startDatetime, endDatetime) {
 
     const browser = await puppeteer.launch({
         headless: "new",
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium",
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox"
@@ -36,7 +37,6 @@ async function fetchReport(startDatetime, endDatetime) {
         // Step 2: Wait for main interface
         await page.waitForSelector("#rptvNextAnchor", { timeout: 30000 });
         console.log("✅ Login successful!");
-        await page.screenshot({ path: "debug-after-login.png" });
 
         // Step 3: Navigate to Order Details
         console.log("🧭 Navigating to Order Details...");
@@ -134,7 +134,7 @@ async function fetchReport(startDatetime, endDatetime) {
     }
 }
 
-// ** API Route **
+// API Route
 app.get("/summary", async (req, res) => {
     const { start_datetime, end_datetime } = req.query;
     if (!start_datetime || !end_datetime) {
@@ -145,10 +145,5 @@ app.get("/summary", async (req, res) => {
     res.json(result);
 });
 
-// ** Default Route **
-app.get("/", (req, res) => {
-    res.send("✅ HungerRush Report API is running! Use /summary to fetch data.");
-});
-
-// ** Start Server **
+// Start Server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
