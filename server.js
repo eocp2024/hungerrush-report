@@ -35,13 +35,25 @@ async function fetchReport(startDatetime, endDatetime) {
         await page.waitForSelector("#rptvNextAnchor", { timeout: 30000 });
         console.log("✅ Login successful! Navigating to Order Details...");
 
-        // ** Navigate to Order Details **
-        await page.click("#rptvNextAnchor"); // Click on "Reporting - NEW!"
+        // ** Navigate to Reporting - NEW! **
+        await page.click("#rptvNextAnchor");
 
-        await page.waitForXPath("//span[text()='Order Details']", { timeout: 30000 });
-        const orderDetailsButton = await page.$x("//span[text()='Order Details']");
+        // ** Debug Screenshot Before Clicking Order Details **
+        console.log("📸 Taking a screenshot before clicking Order Details...");
+        await page.screenshot({ path: "/app/debug-before-click.png", fullPage: true });
+
+        // ** Ensure 'Order Details' is Clickable **
+        const orderDetailsXPath = "//span[text()='Order Details']";
+        await page.waitForXPath(orderDetailsXPath, { timeout: 60000 });
+
+        const orderDetailsButton = await page.$x(orderDetailsXPath);
         if (orderDetailsButton.length > 0) {
+            console.log("🖱️ Scrolling to Order Details...");
+            await page.evaluate((el) => el.scrollIntoView({ behavior: "smooth", block: "center" }), orderDetailsButton[0]);
+
+            console.log("✅ Clicking Order Details!");
             await orderDetailsButton[0].click();
+            await page.waitForTimeout(2000); // Short delay after clicking
         } else {
             throw new Error("❌ 'Order Details' button not found!");
         }
