@@ -1,6 +1,6 @@
 require("dotenv").config();
 const express = require("express");
-const puppeteer = require("puppeteer-core");
+const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
 const xlsx = require("xlsx");
@@ -17,8 +17,11 @@ async function fetchReport(startDatetime, endDatetime) {
 
     const browser = await puppeteer.launch({
         headless: "new",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox"
+        ],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium-browser"
     });
 
     const page = await browser.newPage();
@@ -40,7 +43,6 @@ async function fetchReport(startDatetime, endDatetime) {
         console.log("🧭 Navigating to Order Details...");
         const leftMenuXPath = "//div[@class='main-nav-container']//span[text()='Order Details']/ancestor::a";
         
-        // Retry mechanism for left menu navigation
         let menuFound = false;
         for (let attempt = 1; attempt <= 3; attempt++) {
             try {
@@ -70,7 +72,6 @@ async function fetchReport(startDatetime, endDatetime) {
         // Step 5: Configure Report Parameters
         console.log("⚙️ Configuring report...");
         
-        // Set date range
         await page.click("#startDate input");
         await page.keyboard.type(moment(startDatetime).format("MM/DD/YYYY"));
         await page.click("#endDate input");
