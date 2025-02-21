@@ -16,7 +16,7 @@ async function fetchReport(startDatetime, endDatetime) {
     console.log(`📅 Fetching report from ${startDatetime} to ${endDatetime}`);
 
     const browser = await puppeteer.launch({
-        headless: "new",
+        headless: true, // Changed to true for better performance in headless mode
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium-browser",
         args: [
             "--no-sandbox",
@@ -141,8 +141,12 @@ app.get("/summary", async (req, res) => {
         return res.status(400).json({ error: "❌ Missing parameters" });
     }
 
-    const result = await fetchReport(start_datetime, end_datetime);
-    res.json(result);
+    try {
+        const result = await fetchReport(start_datetime, end_datetime);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: "❌ Internal Server Error" });
+    }
 });
 
 // Start Server
